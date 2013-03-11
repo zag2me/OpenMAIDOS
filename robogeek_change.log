@@ -1,0 +1,539 @@
+﻿OpenMAID v2.0 Change Log
+-------------------------------
+globally      - Did away with plugin key in db tables other than plugins to make things easier to use with
+                multi-version capability and to allow easier migration of tables to OpenMAID v3...If the
+                plugins table needs to be rebuilt, data from OpenMAID v2 will be easier to move over to
+                OpenMAID v3 since plugin keys may not be the same if the db needs to be rebuilt.  Ties 
+                download counts, votes, images, and dependencies to the plugin id and plugin version.
+              - Functions and sql queries that relied on plugin keys were changed to use plugin id and 
+                plugin version instead.  This is related to the plugin key change noted above.
+              - Made sure php scripts that accept plugin id as a parameter will accept the id with and
+                without the curly braces.  Internally, it will convert the id to have curly braces if the
+                id submitted doesn't have them.
+
+dl.php        - Check if plugin file exists, if not, try again with lowercase state directory.  If it
+                still doesn't exist then throw an error and exit.    
+              - Added code for downloading previous versions.  Uses checks for plugin_version and 
+                plugin_state parameters to pull data for previous versions.
+              - Commented out virtual() call (gives error).  Replaced with old code-fopen, fpassthru, fclose
+
+thelist.php   - Added NEXT/PREV links to top of plugin listings. (Previously they were only at the bottom)
+              - Added Items Per Page links by the NEXT/PREV page links.  These links will change the number
+                of items listed on each page and will set a cookie to remember the last used setting.
+              - Fixed NEXT/BACK links when viewing plugins by author.
+              - Some format changes to displayed data on web page. Fields with no data are no longer
+                displayed. 
+              - Added Popularity data.  
+              - Most recent stable version is listed by default.  If a newer, but less stable, version is
+                available, then an additional download and detail link is also displayed.
+
+config.php    - Added debug variable.  Will allow outputing additional code for testing when using 
+                if ($debug) statements in the code.  To use within functions, also include: global 
+                $debug; near the beginning of the function.
+              - Added plugin_home_directory variable.
+
+detail.php    - Added checks for document file in a lowercase state directory name.
+              - Added plugin_version and plugin_state to dl.php parameters for download links for previous
+                versions.
+              - Some format changes to displayed data on web page. Fields with no data are no longer
+                displayed.
+              - Some additional fields were added to the db.  Added some of these fields to the detail page.
+
+db.php        - Created new GetPluginObject called GetPreviousPluginObject.  It adds 3 additional parameters:
+                plugin_version (string), plugin_state (string), and get_previous_plugin (flag > 0).  If the
+                get_previous_plugin flag is set (greater than 0), it will use the plugin_version and 
+                plugin_state to fetch plugin info for that version of the plugin.  Otherwise it will fetch 
+                the info for the current version of the plugin.
+              - Added DoesPluginExistSimple($ID) function to simply test whether or not a plugin id exists 
+              - Edit to GetLatestVersionForState function to get most recently uploaded versionvalue if state
+                is pass as ALL. Used to test uploaded version to be sure it is newer than most recent plugin
+                in database.
+              - Changed plugin_VerisonValue of plugins table definition in the database initialization
+                function.  Changed from bigint(20) to bigint(21) to handle 7 segment version numbers.
+              - Added plugin_Version, requires_Version and changed plugin_key and requires_key to plugin_ID
+                and requires_ID in dependency table definition to allow better explanation of which versions
+                of plugins and dependencies are required to work and to allow easier migration of table in 
+                the event it needs to be exported and imported to a new version of OpenMAID.
+              - Added plugin_Version and removed plugin_key in userdownloads table definition to allow 
+                tracking downloads for each version of a plugin instead of all versions together.
+              - Changed plugin_Version in votesWorking table definition to be same as other table definitions.
+                It was defined as varchar(7), changed it to varchar(15).
+              - Changed IncrementDownloadCount function to include plugin_Version as an argument.
+              - Changed plugin_key to plugin_ID and added plugin_Version in images table definition to allow
+                screenshots for each version to be visible and not just the current version.
+              - Added GetPluginScreenshots(plugin id, plugin version) to get list of screenshots
+              - Added GetPluginHistory(plugin id) to get list of all versions of the plugin
+              - IncrementDownloadCount now uses plugin id and plugin version instead of plugin key.  Allows
+                tracking uploads by version number instead of just the plugin id/key.
+              - GetPluginIcon now uses plugin id and plugin version instead of plugin key.  When viewing
+                the list, the screenshot icon will pull the screenshot from the proper version directory.
+              - Added GetDownloadsTotalThisVersion, GetDownloadsTodayThisVersion, and
+                GetDownloadsMonthThisVersion functions which take plugin_id and plugin_version as 
+                parameters, and returns the download data for a specific version of a plugin.
+              - Added GetMostRecentPluginObject function to get data on the most recently uploaded plugin
+                for a given plugin id.  Different from the GetPluginObject which only gets the data for the
+                most stable version for a plugin id.
+              - Added plugin_DestinationFolder to plugins table.  Will be used to make sure uploaded plugins
+                keep using the same destination folder and GUID.  Multiple destination folders with same
+                GUID may cause problems...or at least it did with the Meedio Update module.
+              - Added CheckForDupeDestinationFolder function to check uploaded plugin to be sure it is using
+                a unique destination folder so it doesn't conflict with an existing plugin.
+              - Added CheckForMultipleDestinationFolders function to check uploaded plugin to be sure it is
+                using the same destination folder as previous versions. Changing destination folders can 
+                cause problems for Meedio since two different versions of a plugin could exist in different
+                directories with the same GUID.
+
+functions.php - Added version checking code in AddMpp function.  Checks to be sure submitted version is newer
+                than most recent version in database.
+              - Extensive additions to the CalculateVersionValue function.  Does sanity checks on input and
+		fails if version format is not valid.  Also accounts for alpha at end of version string and
+                allows the use of RC or rc (release candidate) in the version string.
+              - Made copy of AddMpp function called AdminAddMpp to call from admin panel.  Allows plugins to
+                be processed and not deleted.  Added $ignore_version to funtion to allow it to be called to
+                force an older version to be processed, instead of failing on the version check. Added
+                $delete_uploaded to function to allow admin to process files from ftp repository without
+                deleting the processed files.
+              - Added formatPluginID function which takes a plugin_id value and makes sure it has curly braces
+              - Fixed VoteWorking function to work without the need for ajax and made some minor fomatting
+                changes to the way it looks in the web pages.
+              - Fixed major bug with xml parser where cr/lf in documentation in the .plugin file would cause
+                only the first line to be picked up and the rest ignored.  Rewrote StartElement, EndElement,
+                and characterData functions to properly handle the xml.
+              - Added replaceLinks function to convert text links to html hyperlinks.  Used in detail.php when
+                displaying plugin info.  If there are text links in any of the db fields, they will display on
+                the detail page as clickable hyperlinks.
+              - Added xtern_summary, xtern_extended, and xtern_all functions.  These functions are called from
+                xtern.php to deliver their respective cache file. If cache file is not found, it will generate
+                one.
+              - Added regenerate_xtern_cache function.  This is called from AdminAddMpp function (when new 
+                plugin is uploaded or processed) and will regenerate the summary cache files when a new each
+                time a new plugin is uploaded.
+              - Added Generate_Temp_Directory function to generate unique temp directories.  Used in upload.php
+                and the AdminAddMpp function to prevent clashing of plugins when multiple plugins are uploaded
+                and processed simultaneously.
+              - Added more sanity checks to the AdminAddMpp function.  Checks plugin ID, plugin type,
+                destination folder, and profile ID for various errors and changes to prevent problems and
+                conflicts in the OpenMAID web site and plugin.
+                   - Added check so user can't upload plugins with same GUID, but different destination folder
+                     than previous versions.  Plugins shouldn't change their destination folders from version to
+                     version.
+                   - Added check so user can't upload plugin with same destination folder, but different GUID. 
+                     Two plugins shouldn't be using the same destination directory.
+                   - Added check so another user can't upload a new version of another users plugin without 
+                     authorization.
+                   - Added check to be sure plugin type hasn't changed for the GUID.  If plugin author changes
+                     plugin type, they should also change the GUID.
+                   - Added check to be sure GUID is unique and not conflicting with another plugin.  GUID is now
+                     tied to the plugin type and the plugin destination folder to perform this check.
+
+
+xtern.php     - Added additional data to xml output.  License, date, version value, and download size.
+              - plugin_downloads was broken.  Fixed code to get download data from the userdownloads table.
+              - Getting plugin.xml was broken due to directory structure change.  Added code to calculate new
+                plugin.xml location and also added code to allow fetching plugin.xml from previous versions of
+                a plugin.
+              - Made summary backwards compatible and it now also includes nearly all data available in the
+                database for each plugin.
+              - xtern.php sends now cached data that is freshly generated after each plugin upload instead of
+                constantly hitting the mysql server for each request.  Moved code functions.php... xtern_all,
+                xtern_extended, and xtern_summary functions. 
+              - If cached data does not exist, xtern.php will call the necessary functions to generate it
+                on-the-fly.
+
+process.php   - Added html to integrate it with look and feel of the rest of OpenMAID and the admin panel. 
+              - Enhanced function to allow batch processing of mpps from a ftp (repository) directory.  This
+                ftp directory will hold all available mpp's.  process.php can scan the files and the database
+                and only process new mpp's.  Successful processing renames mpp with .pass extension, failed
+                processing renames mpp with .fail extension.
+              - Added modes to allow manual process and re-processing of plugins.
+
+index.php     - Fixed SQL queries for 'last updated' and 'top 10 downloads' so they work correctly with the 
+                version history addons and the new userdownloads table.
+              - Some minor formatting changes to the display of 'last updated', 'top 10 downloads', and 
+                'download history' to attempt to make it cleaner looking.
+
+upload.php    - Added additional form and code to allow uploading of just .plugin file for testing.  Will allow
+                plugin authors to check for errors in the .plugin file before spending time and bandwidth 
+                uploading large plugins only to have them fail the .plugin sanity checks and have to start the
+                upload all over again after fixing the .plugin errors.
+
+fetchplugins.php - This is a new script.  It downloads all new plugins from Meedios OpenMAID and from
+                   Meedio MAID and stores them in a directory called ftp.  It works in conjuction with
+                   process.php and is smart enough to match plugins from the summary xml files with the 
+                   directory list so it only downloads new plugins regardless of what extension the process.php
+                   script changes them to.  It also prepends meedios_ and meedio_ to the plugins to identify
+                   their origin.
+
+
+
+Todo list (in no particular order)
+-------------------------------------
+70%  - work on admin.php - manage plugins
+60%  - work on process.php - add additional manage and process features to use from admin panel
+     - add support for pre-requisites/dependencies.
+     - slideshow thumbnails on mouseover
+     - add code to regenerate cache files in edit.php
+	 - add url encoding to profile id and author name links
+DONE - add 'x plugins listed' in thelist.php
+DONE - make sure config.php.sample and private.forum_integration.php.sample don't contain sensitive data
+DONE - add repository directory in ftp directory and use that for the master plugin file storage.
+DONE - use ftp root to hold manual uploads.  add options to admin.php and process.php to process these files.
+     - execute fetchplugins.php when done processing manual uploads to sync them to the repository directory.
+DONE - add link to source code archive in main admin page
+     - filters (by popularity, name, downloads, vote, type, author, etc..)
+25%  - top 10 (by last updated, new, you downloaded, most downloaded working, most downloaded not rated, 
+       popularity, authors-total downloads for all plugins * popularity)
+     - search box - add to header so it's on all pages.
+     - rss feed
+     - bot-stopper - prevent bots (like googlebot) from downloading plugins
+     - plugin scoring (downloads * popularity * vote working)?
+     - email update notications - new plugins and updates, plugin watch
+DONE - Can't currenlty handle multiple simultaneous uploads...bad things can happen the way works now. Have
+       files extracted to unique directories in data and mpp directories to avoid clashes between uploads.
+DONE - rollback transactions when plugin fails sanity checks...properly cleanup db, temp directories, and the
+       plugins directory if needed.
+     - allow mods to update plugin info (need to check info against directory structure and rename directories
+       if needed) ... Changing plugin_ID, plugin_Version, or plugin_State will also require change to the 
+       directory name(s).
+     - start support for multiple apps (mp/meediOS)
+DONE - add support for additional <xml> tags in .plugin file for donation url, source url, support url as
+       <DONATION-LINK>, <SOURCE-LINK>, AND <SUPPORT-LINK>
+DONE - script for backup and meedio.com maid syncing
+DONE - work on admin.php - processing new plugins (ftp repository), syncing w/ meedio.com maid
+DONE - Thumbnails only display for current version.  Need to store thumbnail data by plugin_ID and
+DONE - Keep every single version
+DONE - Allow users to download old versions
+DONE - Version parsing
+DONE - Don't allow same version (or older version) plugin to be uploaded
+DONE - Some plugins fail xml parsing. Possibly because they use copyright symbol...find bug and fix it.
+       Fixed: xml_parse was using utf8 encoding, changed it to ISO-8859-1 like the .plugin files
+DONE - Changed plugin id calls back to using curly braces.  Can now take plugin id with or without curly
+       braces.
+DONE - add total download count and current version download count in thelist.php
+DONE - fixed images.php. Clicking thumbnail in detail screen now shows larger image on image screen and
+       clicking the image will open it fullsize in a new browser window.
+DONE - add popularity data to items in thelist.php
+DONE - add popularity data to items in detail.php
+DONE - add popularity data to xtern.php
+DONE - add hash value to xtern.php?
+DONE - add total download count and download counts per version in detail.php
+DONE - if dev uploads 1.2-stable but later uploads 1.3-beta, people who want stable see 1.2 and people who
+       want beta see 1.3.  When 1.3.1-stable is uploaded, beta people see 1.3.1... thelist.php now shows
+       most recent stable version and also shows link to most recent beta/alpha version if available. Will
+       add support for user preference selection later.
+DONE - allow uploading/testing of .plugin file before user uploads mpp - allow authors to check for errors
+       before wasting alot of time uploading and re-uploading the entire mpp to correct errors.
+DONE - finish edit.php (add additional fields support, donation, source links, and possibly dependencies)
+DONE - convert text links in descriptions to html hyperlinks
+DONE - add following tags to parser and to plugins table:  <author-email>, <site>, <direct-download-url>,
+       <min-required-version>, <max-required-version>, <is-dot-net>, <is-dot-net-simple>
+       plugin_AuthorEmail varchar(255), plugin_Site varchar(255), plugin_DirectDownloadURL varchar (255)
+       plugin_MinRequiredVersion tinytext, plugin_MaxRequiredVersion tinytext, plugin_IsDotNET tinytext,
+       plugin_IsDotNETSimple tinytext
+DONE - Added additional info to the detail.php screen
+DONE - Fixed display of some documentation text in detail screen.  If there are special html characters like
+       < > embedded in the text, they won't be treated as html tags.
+DONE - xtern summary - backcompat...make it so it only lists latest version of a plugin
+DONE - xtern extended - list 1-3 version of each plugin (dependng on plugin state). Lists most recent version
+       of each state (Stable, Beta, Alpha) for each plugin.
+DONE - xtern all - output all data from db
+DONE - xtern generate cache files (all.cache, summary.cache, extended.cache)  update the cache files after
+       each plugin upload.  When user calls xtern, send cached files instead of always regenerating the the
+       output and sending continuously hitting the mysql with the db queries.
+DONE - provide a /source.bzip link that the admin.php can update on-command. Added openmaid_source.gzip
+DONE - breadcrumb link bar (not perfect, and admin area needs some work)
+DONE - add most recent alpha/beta and stable links to thelist.php and detail.php
+DONE - work on fetchplugins.php - when getting plugin copies from Meedio or Meedios MAID, it should check to
+       see if the plugin is already in the db and mark it as .pass so it doesn't get processed again.
+DONE - add vote links to items in thelist.php and detail.php
+DONE - added profil_id sync w/old db option in admin menu.  will allow admin to sync profil_id from old db 
+       with the new db.
+DONE - add check so user can't upload plugins with same GUID, but different destination folder than previous 
+       versions.  plugins shouldn't change their destination folders from version to version.
+DONE - add check so user can't upload plugin with same destination folder, but different GUID. two plugins
+       shouldn't be using the same destination directory.
+DONE - add check so another user can't upload a new version of another users plugin without authorization
+DONE - add check to be sure plugin type hasn't changed for the GUID.  if plugin author changes plugin type, 
+       they should also change the GUID
+DONE - add check to be sure GUID is unique and not conflicting with another plugin.  GUID is now tied to the
+       plugin type and the plugin destination folder to perform this check.
+
+
+
+API's
+--------------------
+dl.php: Accepts plugin or plugin_id with plugin GUID as previously and now must also include the 
+        plugin_version and plugin_state parameters to download a plugin.  
+
+	plugin or plugin_id  =  plugin GUID (with or without curly braces) - case sensitive
+        plugin_version       =  plugin version string, not the plugin version value - case sensitive
+        plugin_state         =  Alpha, Beta, or Stable - not case sensitive
+
+        Example:
+        dl.php?plugin_id=E68D5E11-14B4-4AF7-B284-7B23E5D862D2&plugin_version=0.1.1&plugin_state=Alpha
+        dl.php?plugin_id={E68D5E11-14B4-4AF7-B284-7B23E5D862D2}&plugin_version=0.1.1&plugin_state=Alpha
+
+
+
+
+
+xtern.php: Summary works same as before but pushes out more plugin data. Currently pushing out plugin id
+           version, versionvalue, type, state, name, url, size, date, license, downloads, trusted, works,
+           desc, and author.
+
+           Example:
+           xtern.php?summary returns xml with summary of OpenMAID plugins.
+
+
+           The plugin info has two parts:
+
+           1 - if xtern.php is called with plugin= parameter, it fetches data for the currently active plugin.
+               This should be the data for the most recent stable version, or most recent beta if no stable
+               version exists, or most recent alpha if no beta or stable versions exist.
+           2 - xtern.php can also be called with plugin, version and state parameters together to get data
+               for a specific version and state for a plugin.
+           
+           plugin   =  plugin id (with or without curly braces) - case sensitive
+           version  =  plugin version string, not the plugin version value - case sensitive
+           state    =  Alpha, Beta, or Stable - not case sensitive
+
+           Examples:
+           xtern.php?plugin=0CF982B9-7D1B-4E7C-A189-1AAEC43CA062
+           xtern.php?plugin={0CF982B9-7D1B-4E7C-A189-1AAEC43CA062}
+           xtern.php?plugin=0CF982B9-7D1B-4E7C-A189-1AAEC43CA062&version=1.5.0.1&state=Stable
+           xtern.php?plugin={0CF982B9-7D1B-4E7C-A189-1AAEC43CA062}&version=1.5.0.1&state=Stable
+
+           Added extended and all as new calls to xtern.php.  Extended gets list of the most recent stable,
+           beta, and alpha version of each plugin.  All gets all versions of all plugins in the database.
+
+           Examples:
+           xtern.php?extended
+           xtern.php?all
+
+
+-----------------------------------------------------------
+archive.php usage:
+-----------------------------------------------------------
+
+TAR/GZIP/BZIP2/ZIP ARCHIVE CLASSES Examples 
+
+Examples of Compression: 
+
+The following example creates a gzipped tar file: 
+// Assume the following script is executing in /var/www/htdocs/test 
+// Create a new gzip file test.tgz in htdocs/test 
+$test = new gzip_file("htdocs/test/test.tgz"); 
+// Set basedir to "../..", which translates to /var/www 
+// Overwrite /var/www/htdocs/test/test.tgz if it already exists 
+// Set compression level to 1 (lowest) 
+$test->set_options(array('basedir' => "../..", 'overwrite' => 1, 'level' => 1)); 
+// Add entire htdocs directory and all subdirectories 
+// Add all php files in htsdocs and its subdirectories 
+$test->add_files(array("htdocs", "htsdocs/*.php")); 
+// Exclude all jpg files in htdocs and its subdirectories 
+$test->exclude_files("htdocs/*.jpg"); 
+// Create /var/www/htdocs/test/test.tgz 
+$test->create_archive(); 
+// Check for errors (you can check for errors at any point) 
+if (count($test->errors) > 0) 
+    print ("Errors occurred."); // Process errors here 
+
+The following example creates a zip file: 
+// Create new zip file in the directory below the current one 
+$test = new zip_file("../example.zip"); 
+// All files added will be relative to the directory in which the script is 
+//    executing since no basedir is set. 
+// Create archive in memory 
+// Do not recurse through subdirectories 
+// Do not store file paths in archive 
+$test->set_options(array('inmemory' => 1, 'recurse' => 0, 'storepaths' => 0)); 
+// Add lib/archive.php to archive 
+$test->add_files("src/archive.php"); 
+// Add all jpegs and gifs in the images directory to archive 
+$test->add_files(array("images/*.jp*g", "images/*.gif")); 
+// Store all exe files in bin without compression 
+$test->store_files("bin/*.exe"); 
+// Create archive in memory 
+$test->create_archive(); 
+// Send archive to user for download 
+$test->download_file(); 
+
+
+
+Examples of Decompression: 
+
+The following example extracts a bzipped tar file: 
+// Open test.tbz2 
+$test = new bzip_file("test.tbz2"); 
+// Overwrite existing files 
+$test->set_options(array('overwrite' => 1)); 
+// Extract contents of archive to disk 
+$test->extract_files(); 
+
+The following example extracts a tar file: 
+// Open archives/test.tar 
+$test = new tar_file("archives/test.tar"); 
+// Extract in memory 
+$test->set_options(array('inmemory' => 0)); 
+// Extract archive to memory 
+$test->extract_files(); 
+// Write out the name and size of each file extracted 
+foreach ($test->files as $file) 
+    print ("File " + $file['name'] + " is " + $file['stat'][7] + " bytes\n"); 
+
+-----------------------------------------------------------
+archive.php readme:
+-----------------------------------------------------------
+TAR/GZIP/BZIP2/ZIP ARCHIVE CLASSES 2.1
+By Devin Doucette
+Copyright (c) 2005 Devin Doucette
+Email: darksnoopy@shaw.ca
+
+Requirements:
+PHP 4 or greater (there is a chance tar and zip archives will work with PHP 3)
+Compiled using --with-bz2 for bzip2 support.
+Compiled using --with-zlib for gzip and zip support.
+ (Zip archives created using method 0 do not require zlib)
+
+Features:
+- Can create tar, gzip, bzip2, and zip archives.
+- Can create self-extracting zip archives.
+- Can recurse through and store directories.
+- Can create archives in memory or on disk.
+- Can allow client to download file directly from memory.
+- Errors are placed in an array named "errors" in the object.
+- Supports in zip file comments.
+- Files are automatically sorted within archive for greater 
+  compression in gzip and bzip2 archives.
+- Supports archiving and extraction of symbolic links (not 
+  applicable for zip files).
+
+Note:
+Bzip2 and gzip archives are always created as tar files and then compressed, so the 
+recommended file extensions are .tbz/.tbz2 and .tgz respectively.
+
+Limitations:
+- Currently only USTAR archives are supported for tar file extraction.
+- Only bzip2 and gzip files that contain a tar file can be extracted. (Opening these 
+  files otherwise is already supported by PHP)
+- Cannot extract zip files. (This feature is already supported by PHP)
+
+Extraction of bzip2 and gzip archives is limited to compatible tar files that have 
+been compressed by either bzip2 or gzip.  For greater support, use the functions 
+bzopen and gzopen respectively for bzip2 and gzip extraction.
+
+Zip extraction is not supported due to the wide variety of algorithms that may be 
+used for compression and newer features such as encryption.  If you need to extract 
+zip files, use the functions detailed at http://www.php.net/manual/en/ref.zip.php.
+
+Downloading Files:
+The download_file function only works for files that are stored in memory.  To have 
+users download files that are on disk redirect to the file, or use the following method: 
+- Send the appropriate Content-Type header for the file being sent.
+- Send a "Content-Disposition: attachment; filename=[insert filename]" header.
+- Write out the file contents.
+
+
+
+Usage:
+For tar use tar_file (eg. $example = new tar_file("example.tar");)
+For gzip use gzip_file (eg. $example = new gzip_file("example.tgz");)
+For bzip2 use bzip_file (eg. $example = new bzip_file("example.tbz");)
+For zip use zip_file (eg. $example = new zip_file("example.zip");)
+
+Options:
+To set options, send an array containing the options that you wish to set to the 
+function set_options. (eg. $example->setoptions($options);)
+The options array can include any of the following:
+
+basedir (default ".")
+   Sets the that all filenames are taken as being relative to (except optional sfx header).
+   Used both when creating and when extracting (will extract to basedir if inmemory == 0).
+
+name (no default)
+   The name (and path, if necessary) of the archive, relative to basedir.
+   Should be set when creating object (eg. $example = new zip_file("test/example.zip");).
+
+prepend (no default)
+   The path that is added to the beginning of every filename in the archive.
+   Example: If prepend is set to "src/zlib/" then the file "docs/readme.txt" will be 
+      stored in the archive as "src/zlib/docs/readme.txt".
+
+inmemory (default 0)
+   Set to 1 to create/extract archive in memory, set to 0 to write to disk.
+
+overwrite (default 0)
+   Set to 1 to overwrite existing files when creating/extracting archives.
+   If set to 0, will give error message if file already exists.
+
+recurse (default 1)
+   Set to 1 to recurse through subdirectories, 0 to not recurse.
+
+storepaths (default 1)
+   Set to 1 to store paths in the archive, 0 to strip paths from the filenames.
+
+followlinks (default 0)
+   Set to 1 to store the file that the symbolic link points to, 0 to store the link itself.
+
+level (default 3, zip and gzip only) [1-9]
+   Level of compression for zip and gzip files, 0 is none.
+
+method (default 1, zip only)
+   Set to 1 to compress files in the zip archive, 0 to store files only (no compression).
+
+sfx (no default, zip only)
+   Filename of a valid sfx header for a zip archive, NOT relative to basedir.
+   SFX capability is added to a zip file by simply prepending a valid executable, so this 
+      options takes the path of such a file. An example of a valid file for this would be 
+      "Zip.SFX" that is included in WinRAR.
+
+comment (no default)
+   The comment added to a zip archive; may be used to set options for some sfx modules.
+
+Example options array: $options = array('basedir' => "../example", 'overwrite' => 1);
+
+Adding Files and Directories:
+To add files use the add_files function, which takes either an array or a single 
+file/path.  The * character can be used but be careful, as it is the equivalent 
+of placing .* in a regular expression.
+Examples: $example->add_files("htdocs");
+          $example->add_files(array("test.php", "htdocs/*.txt"));
+          $example->add_files("../*.gif");
+
+To exclude files or directories from the archive use the exclude_files function, which works 
+the same as the add_files function, except it excludes any files or directories would 
+otherwise be added to the archive. (eg. $example->exclude_files("*.html");)
+
+To store files without compression (zip only), use the store_files function. This function 
+works the same as add_files and exclude_files. (eg. $example->store_files("htdocs/test.txt");)
+
+Creating and Extracting Archives:
+To create an archive, call the create_archive function. (eg. $example->create_archive();)
+The archive created is the one passed when creating the object.  If the file is downloaded, 
+the filename sent for the download is the name passed when creating the object.
+
+To extract an archive, call the extract_files function. (eg. $example->extract_files();)
+The archive extracted is the one passed when creating the object.  If the file is extracted 
+to memory, the file information is located in an array called files (eg. $example->files)
+
+The structure of the array into which files are extracted in memory is as follows:
+$files = array(
+'name'=>filename,
+'stat'=>array(
+   2=>mode
+   4=>uid
+   5=>gid
+   7=>size
+   9=>mtime),
+'type'=>0 for file, 2 for symbolic link, 5 for directory,
+'data'=>file contents);
+
+Errors:
+Any errors that occur during any process will be logged in the errors array 
+(eg. $example->errors). If any serious errors occur they will report errors as
+usual; only errors directly related to the creation or extraction of the archive
+will be suppressed any stored in the errors array.
+
+ 
+ 
+

@@ -1,0 +1,44 @@
+Start by backing up the existing maid directory and the existing maid MySQL database.
+We may need these if anything goes horribly wrong below.
+
+
+1. Create new maid directory or delete ALL contents of existing maid directory if
+   reusing this location for OpenMAID v2
+
+2. Ungzip openmaid_source.gzip to this maid directory.  Source archive is located at:
+   http://207.44.156.88/~vinny/OpenMaid/openmaid_source.gzip
+   Can be regenerated from the admin page (http://207.44.156.88/~vinny/OpenMaid/admin.php).
+   Click the Archive Source Code link in the menu on the right side of the admin page.
+
+3. Create new db in Meedios MySQL account for the OpenMAID v2 db.  Don't reuse the 
+   existing db!
+
+4. Edit config.php file to reflect proper db info and be sure url and directory info is
+   correct.
+
+5. Go to the admin.php script
+
+6. In right-menu, select Initialize Directories
+
+7. In right-menu, select Initialize Database
+
+8. In right-menu, select Sync w/Meedio MAID  (This will sync the repository directory with
+   meedios openmaid v2 beta site, meedios openmaid v1, and meedio maid)
+
+9. Refresh the admin.php page
+
+10. Under FTP Uploads/Repository, on the line that has 'Auto or Manual Process New Plugins', 
+    click the Manual link to go to the Manage New Plugins page.
+
+11. On the Manage New Plugins page near the top by Global Process, click the [ignore sanity 
+    errors and force db update] link.  It processes 25 plugins at a time and provides a link
+    at the bottom of the results to continue processing.  Ignore all errors that are
+    reported due to sanity checks.
+
+12. Continue processing until all plugins have been processed.
+
+13. Goto admin.php and click Sync Profile ID w/old DB link from right-menu
+
+14. Test to be sure everything is working.
+
+15. Done
