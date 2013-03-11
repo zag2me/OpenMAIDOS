@@ -36,7 +36,7 @@ function getPhpUser()
 		$session_id = '';
 	}
 
-	@mysql_connect("localhost", "slug", "foxtr0t") or die("Error 45");
+	@mysql_connect("localhost", "", "") or die("Error 45");
 	@mysql_select_db("slugphpbb") or die("Error 6542");
 
 	//
